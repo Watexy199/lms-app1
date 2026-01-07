@@ -10,26 +10,33 @@ import userRouter from "./routes/userRoutes.js"
 
 const app = express()
 
-// Connect DB ONCE (important for serverless)
-await connectDB()
-
 // Middlewares
 app.use(cors())
+app.use(express.json()) // Move this here to apply globally
 app.use(clerkMiddleware())
 
 // Routes
 app.get("/", (req, res) => res.send("API Working"))
-app.post("/clerk", express.json(), clerkWebhooks)
-app.use("/api/educator", express.json(), educatorRouter)
-app.use("/api/course", express.json(), courseRouter)
-app.use("/api/user", express.json(), userRouter)
+app.post("/clerk", clerkWebhooks)
+app.use("/api/educator", educatorRouter)
+app.use("/api/course", courseRouter)
+app.use("/api/user", userRouter)
 
 // Pesapal webhook (raw body)
 app.post("/pesapal", express.raw({ type: "application/json" }))
 
-// ✅ EXPORT APP (NO app.listen)
-export default app
+// Lazy connect to MongoDB only when needed
+let dbConnected = false
+app.use(async (req, res, next) => {
+  if (!dbConnected) {
+    await connectDB()
+    dbConnected = true
+  }
+  next()
+})
 
+// Export app for Vercel
+export default app
 
 
 
